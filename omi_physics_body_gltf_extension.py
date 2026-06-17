@@ -293,6 +293,23 @@ def _on_is_collision_toggled(self, context):
     _auto_fit_from_object(obj, self)
 
 
+def _on_shape_type_changed(self, context):
+    """Update callback for OMIPhysicsProperties.shape_type.
+
+    When the user picks a new primitive shape type, auto-fit its dimensions
+    from the object's bounding box so the new shape immediately matches the
+    object's size. Skipped for convex/trimesh/none (no dimensions to fit).
+    Also skipped if Is Collision is off (no point fitting a shape on a
+    non-collision object).
+    """
+    if not self.is_collision:
+        return
+    obj = context.object
+    if obj is None:
+        return
+    _auto_fit_from_object(obj, self)
+
+
 # ============================================================================
 # glTF +Y Up conversion helpers
 # ============================================================================
@@ -417,7 +434,11 @@ class OMIPhysicsProperties(PropertyGroup):
     # ---- Shape -------------------------------------------------------------
     shape_type: EnumProperty(
         name="Shape Type",
-        description="OMI_physics_shape.shapes[].type",
+        description=(
+            "OMI_physics_shape.shapes[].type. When changed, the new shape's "
+            "dimensions are auto-fitted from the object's bounding box "
+            "(for primitive shapes only)."
+        ),
         items=[
             ('box',         'Box',         'Box primitive (size in local units)'),
             ('sphere',      'Sphere',      'Sphere primitive (single radius)'),
@@ -428,6 +449,7 @@ class OMIPhysicsProperties(PropertyGroup):
             ('none',        'None',        'No collider shape (compound/group node only)'),
         ],
         default='box',
+        update=_on_shape_type_changed,
     )
 
     # Box
