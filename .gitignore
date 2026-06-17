@@ -1,0 +1,54 @@
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Blender ---
+# Blender crash dumps and recovery files
+*.blend1
+*.blend2
+*.blend3
+*.blend4
+*.blend5
+*.blend6
+*.blend7
+*.blend8
+*.blend9
+*.blend10
+*.blend11
+*.blend12
+*.blend13
+*.blend14
+*.blend15
+*.blend16
+*.blend17
+*.blend18
+*.blend19
+*.blend20
+blenderncrash*.txt
+quit.blend
+
+# Blender autosave / backup directories
+autosave/
+backup/
+
+# --- Project-specific ---
+# Don't commit generated test artifacts; do commit the test script itself.
+scripts/__pycache__/
+
+# Local-only notes / scratch files
+notes/
+TODO.local.md

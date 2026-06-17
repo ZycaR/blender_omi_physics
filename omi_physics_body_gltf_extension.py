@@ -3,9 +3,9 @@
 bl_info = {
     "name": "OMI Physics Body glTF Extension",
     "author": "Z",
-    "version": (1, 6, 0),
+    "version": (1, 6, 2),
     "blender": (5, 0, 0),
-    "location": "View3D > Sidebar (N) > OMI tab",
+    "location": "View3D > Sidebar (N) > OMI Physics tab",
     "description": (
         "Export OMI_physics_body and OMI_physics_shape glTF extensions for "
         "Godot 4.x (replaces deprecated OMI_collider). Supports primitive "
@@ -418,9 +418,10 @@ class OMIPhysicsProperties(PropertyGroup):
     )
     angular_velocity: FloatVectorProperty(
         name="Angular Velocity",
-        description="Initial angular velocity (rad/s)",
+        description="Initial angular velocity (rad/s) on X/Y/Z axes",
         default=(0.0, 0.0, 0.0),
         size=3,
+        subtype='XYZ',
     )
     center_of_mass: FloatVectorProperty(
         name="Center of Mass",
@@ -431,9 +432,10 @@ class OMIPhysicsProperties(PropertyGroup):
     )
     inertia_diagonal: FloatVectorProperty(
         name="Inertia Diagonal",
-        description="Diagonal of the inertia tensor",
+        description="Diagonal of the inertia tensor (kg·m²) on X/Y/Z axes",
         default=(0.0, 0.0, 0.0),
         size=3,
+        subtype='XYZ',
     )
     inertia_orientation: FloatVectorProperty(
         name="Inertia Orientation",
@@ -470,7 +472,11 @@ class OBJECT_PT_omi_analyze(Panel):
     bl_idname = "OBJECT_PT_omi_analyze"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
+    # bl_order controls vertical stacking order within the tab.
+    # Lower numbers appear higher. We want Analyze at the BOTTOM, so it
+    # gets the highest number of the three top-level panels.
+    bl_order = 3
 
     @classmethod
     def poll(cls, context):
@@ -533,7 +539,8 @@ class OBJECT_PT_omi_body(Panel):
     bl_idname = "OBJECT_PT_omi_body"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
+    bl_order = 1
 
     @classmethod
     def poll(cls, context):
@@ -570,7 +577,7 @@ class OBJECT_PT_omi_body_velocity(Panel):
     bl_idname = "OBJECT_PT_omi_body_velocity"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
     bl_parent_id = "OBJECT_PT_omi_body"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -582,10 +589,35 @@ class OBJECT_PT_omi_body_velocity(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        layout.use_property_split = True
+        # "Label inside the input box" look (Blender Transform-panel style):
+        # use an aligned row with a leading label (no text on the prop), so
+        # the label and value fuse into a single boxed control like [X  0 m/s].
+        layout.use_property_split = False
         layout.use_property_decorate = False
-        layout.prop(props, "linear_velocity")
-        layout.prop(props, "angular_velocity")
+
+        # Linear Velocity (m/s)
+        layout.label(text="Linear Velocity (m/s):")
+        row = layout.row(align=True)
+        row.label(text="X")
+        row.prop(props, "linear_velocity", index=0, text="")
+        row = layout.row(align=True)
+        row.label(text="Y")
+        row.prop(props, "linear_velocity", index=1, text="")
+        row = layout.row(align=True)
+        row.label(text="Z")
+        row.prop(props, "linear_velocity", index=2, text="")
+
+        # Angular Velocity (rad/s)
+        layout.label(text="Angular Velocity (rad/s):")
+        row = layout.row(align=True)
+        row.label(text="X")
+        row.prop(props, "angular_velocity", index=0, text="")
+        row = layout.row(align=True)
+        row.label(text="Y")
+        row.prop(props, "angular_velocity", index=1, text="")
+        row = layout.row(align=True)
+        row.label(text="Z")
+        row.prop(props, "angular_velocity", index=2, text="")
 
 
 # ----------------------------------------------------------------------------
@@ -596,7 +628,7 @@ class OBJECT_PT_omi_body_com(Panel):
     bl_idname = "OBJECT_PT_omi_body_com"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
     bl_parent_id = "OBJECT_PT_omi_body"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -608,9 +640,20 @@ class OBJECT_PT_omi_body_com(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        layout.use_property_split = True
+        # "Label inside the input box" look (same pattern as Velocity).
+        layout.use_property_split = False
         layout.use_property_decorate = False
-        layout.prop(props, "center_of_mass")
+
+        layout.label(text="Center of Mass Offset:")
+        row = layout.row(align=True)
+        row.label(text="X")
+        row.prop(props, "center_of_mass", index=0, text="")
+        row = layout.row(align=True)
+        row.label(text="Y")
+        row.prop(props, "center_of_mass", index=1, text="")
+        row = layout.row(align=True)
+        row.label(text="Z")
+        row.prop(props, "center_of_mass", index=2, text="")
 
 
 # ----------------------------------------------------------------------------
@@ -621,7 +664,7 @@ class OBJECT_PT_omi_body_inertia(Panel):
     bl_idname = "OBJECT_PT_omi_body_inertia"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
     bl_parent_id = "OBJECT_PT_omi_body"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -633,10 +676,36 @@ class OBJECT_PT_omi_body_inertia(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        layout.use_property_split = True
+        # "Label inside the input box" look (same pattern as Velocity).
+        layout.use_property_split = False
         layout.use_property_decorate = False
-        layout.prop(props, "inertia_diagonal")
-        layout.prop(props, "inertia_orientation")
+
+        # Inertia Diagonal (kg * m^2)
+        layout.label(text="Inertia Diagonal (kg·m²):")
+        row = layout.row(align=True)
+        row.label(text="X")
+        row.prop(props, "inertia_diagonal", index=0, text="")
+        row = layout.row(align=True)
+        row.label(text="Y")
+        row.prop(props, "inertia_diagonal", index=1, text="")
+        row = layout.row(align=True)
+        row.label(text="Z")
+        row.prop(props, "inertia_diagonal", index=2, text="")
+
+        # Inertia Orientation (quaternion xyzw)
+        layout.label(text="Inertia Orientation (quaternion):")
+        row = layout.row(align=True)
+        row.label(text="X")
+        row.prop(props, "inertia_orientation", index=0, text="")
+        row = layout.row(align=True)
+        row.label(text="Y")
+        row.prop(props, "inertia_orientation", index=1, text="")
+        row = layout.row(align=True)
+        row.label(text="Z")
+        row.prop(props, "inertia_orientation", index=2, text="")
+        row = layout.row(align=True)
+        row.label(text="W")
+        row.prop(props, "inertia_orientation", index=3, text="")
 
 
 # ----------------------------------------------------------------------------
@@ -647,7 +716,8 @@ class OBJECT_PT_omi_shape(Panel):
     bl_idname = "OBJECT_PT_omi_shape"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'OMI'
+    bl_category = 'OMI Physics'
+    bl_order = 2
 
     @classmethod
     def poll(cls, context):
