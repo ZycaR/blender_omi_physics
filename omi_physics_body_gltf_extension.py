@@ -589,35 +589,38 @@ class OBJECT_PT_omi_body_velocity(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        # "Label inside the input box" look (Blender Transform-panel style):
-        # use an aligned row with a leading label (no text on the prop), so
-        # the label and value fuse into a single boxed control like [X  0 m/s].
+        # Hybrid pattern: one axis per line, label INSIDE the box, with all
+        # axes of a group fused together vertically (no inter-row gaps) via
+        # an aligned column. Produces the boxed-group look:
+        #   ┌─┬───────┐
+        #   │X│ 0 m/s │
+        #   ├─┼───────┤
+        #   │Y│ 0 m/s │
+        #   ├─┼───────┤
+        #   │Z│ 0 m/s │
+        #   └─┴───────┘
         layout.use_property_split = False
         layout.use_property_decorate = False
 
         # Linear Velocity (m/s)
         layout.label(text="Linear Velocity (m/s):")
-        row = layout.row(align=True)
-        row.label(text="X")
-        row.prop(props, "linear_velocity", index=0, text="")
-        row = layout.row(align=True)
-        row.label(text="Y")
-        row.prop(props, "linear_velocity", index=1, text="")
-        row = layout.row(align=True)
-        row.label(text="Z")
-        row.prop(props, "linear_velocity", index=2, text="")
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(props, "linear_velocity", index=0, text="X")
+        row = col.row(align=True)
+        row.prop(props, "linear_velocity", index=1, text="Y")
+        row = col.row(align=True)
+        row.prop(props, "linear_velocity", index=2, text="Z")
 
         # Angular Velocity (rad/s)
         layout.label(text="Angular Velocity (rad/s):")
-        row = layout.row(align=True)
-        row.label(text="X")
-        row.prop(props, "angular_velocity", index=0, text="")
-        row = layout.row(align=True)
-        row.label(text="Y")
-        row.prop(props, "angular_velocity", index=1, text="")
-        row = layout.row(align=True)
-        row.label(text="Z")
-        row.prop(props, "angular_velocity", index=2, text="")
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(props, "angular_velocity", index=0, text="X")
+        row = col.row(align=True)
+        row.prop(props, "angular_velocity", index=1, text="Y")
+        row = col.row(align=True)
+        row.prop(props, "angular_velocity", index=2, text="Z")
 
 
 # ----------------------------------------------------------------------------
@@ -640,20 +643,19 @@ class OBJECT_PT_omi_body_com(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        # "Label inside the input box" look (same pattern as Velocity).
+        # Hybrid pattern: one axis per line, label INSIDE the box, fused
+        # vertically via aligned column.
         layout.use_property_split = False
         layout.use_property_decorate = False
 
         layout.label(text="Center of Mass Offset:")
-        row = layout.row(align=True)
-        row.label(text="X")
-        row.prop(props, "center_of_mass", index=0, text="")
-        row = layout.row(align=True)
-        row.label(text="Y")
-        row.prop(props, "center_of_mass", index=1, text="")
-        row = layout.row(align=True)
-        row.label(text="Z")
-        row.prop(props, "center_of_mass", index=2, text="")
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(props, "center_of_mass", index=0, text="X")
+        row = col.row(align=True)
+        row.prop(props, "center_of_mass", index=1, text="Y")
+        row = col.row(align=True)
+        row.prop(props, "center_of_mass", index=2, text="Z")
 
 
 # ----------------------------------------------------------------------------
@@ -676,36 +678,32 @@ class OBJECT_PT_omi_body_inertia(Panel):
     def draw(self, context):
         layout = self.layout
         props = context.object.omi_physics_props
-        # "Label inside the input box" look (same pattern as Velocity).
+        # Hybrid pattern: one axis per line, label INSIDE the box, fused
+        # vertically via aligned column.
         layout.use_property_split = False
         layout.use_property_decorate = False
 
         # Inertia Diagonal (kg * m^2)
         layout.label(text="Inertia Diagonal (kg·m²):")
-        row = layout.row(align=True)
-        row.label(text="X")
-        row.prop(props, "inertia_diagonal", index=0, text="")
-        row = layout.row(align=True)
-        row.label(text="Y")
-        row.prop(props, "inertia_diagonal", index=1, text="")
-        row = layout.row(align=True)
-        row.label(text="Z")
-        row.prop(props, "inertia_diagonal", index=2, text="")
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(props, "inertia_diagonal", index=0, text="X")
+        row = col.row(align=True)
+        row.prop(props, "inertia_diagonal", index=1, text="Y")
+        row = col.row(align=True)
+        row.prop(props, "inertia_diagonal", index=2, text="Z")
 
         # Inertia Orientation (quaternion xyzw)
         layout.label(text="Inertia Orientation (quaternion):")
-        row = layout.row(align=True)
-        row.label(text="X")
-        row.prop(props, "inertia_orientation", index=0, text="")
-        row = layout.row(align=True)
-        row.label(text="Y")
-        row.prop(props, "inertia_orientation", index=1, text="")
-        row = layout.row(align=True)
-        row.label(text="Z")
-        row.prop(props, "inertia_orientation", index=2, text="")
-        row = layout.row(align=True)
-        row.label(text="W")
-        row.prop(props, "inertia_orientation", index=3, text="")
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(props, "inertia_orientation", index=0, text="X")
+        row = col.row(align=True)
+        row.prop(props, "inertia_orientation", index=1, text="Y")
+        row = col.row(align=True)
+        row.prop(props, "inertia_orientation", index=2, text="Z")
+        row = col.row(align=True)
+        row.prop(props, "inertia_orientation", index=3, text="W")
 
 
 # ----------------------------------------------------------------------------
@@ -735,7 +733,19 @@ class OBJECT_PT_omi_shape(Panel):
 
         st = props.shape_type
         if st == 'box':
-            layout.prop(props, "box_size")
+            # Box Size: fused-box pattern (label + aligned column + 3 rows).
+            # Disable use_property_split for this sub-section so the text="X"
+            # labels render inside the input boxes instead of in front.
+            sub = layout.column()
+            sub.use_property_split = False
+            sub.label(text="Box Size:")
+            col = sub.column(align=True)
+            row = col.row(align=True)
+            row.prop(props, "box_size", index=0, text="X")
+            row = col.row(align=True)
+            row.prop(props, "box_size", index=1, text="Y")
+            row = col.row(align=True)
+            row.prop(props, "box_size", index=2, text="Z")
         elif st == 'sphere':
             layout.prop(props, "sphere_radius")
         elif st == 'cylinder':
