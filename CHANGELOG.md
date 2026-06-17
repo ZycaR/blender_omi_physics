@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-06-17
+
+### Added
+- **Auto-fit on Is Collision toggle**: when the user enables `Is Collision`
+  on an object, the shape's dimensions are now automatically fitted from
+  the object's bounding box (for box/sphere/cylinder/capsule). Saves a
+  click on the Auto-Fit button in the common workflow.
+- **Reset Shape to Defaults** operator (next to Auto-Fit in the Shape panel,
+  with a refresh icon). Resets dimensions to sane defaults:
+  - Box: size = (1, 1, 1)
+  - Sphere: radius = 0.5
+  - Cylinder: radius = 0.5, height = 1.0, axis = 'Y'
+  - Capsule: radius = 0.5, height = 1.0, axis = 'Y'
+
+### Changed
+- Refactored the auto-fit logic into a shared `_auto_fit_from_object()`
+  helper so it can be called from both the operator and the property
+  update callback without duplication.
+- The Auto-Fit operator now gracefully skips objects with zero dimensions
+  (Empty, Armature, etc.) instead of writing zeros into the shape.
+- Shape panel: Auto-Fit and Reset buttons are now in an aligned row,
+  making the Reset button a compact icon-only button next to Auto-Fit.
+
 ## [1.6.2] - 2026-06-17
 
 ### Added
@@ -125,6 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Best-effort round-trip import: re-applies `OMI_physics_body` data onto
   the Blender objects created for each glTF node.
 
+[1.6.3]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.3
 [1.6.2]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.2
 [1.6.0]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.0
 [1.5.0]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.5.0

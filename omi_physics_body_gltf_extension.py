@@ -3,7 +3,7 @@
 bl_info = {
     "name": "OMI Physics Body glTF Extension",
     "author": "Z",
-    "version": (1, 6, 2),
+    "version": (1, 6, 3),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar (N) > OMI Physics tab",
     "description": (
@@ -129,15 +129,39 @@ _VALID_ICONS = None
 
 
 def _valid_icons():
+    """Return the set of icon names valid in the current Blender build.
+
+    On first call, introspects the live UILayout icon enum and caches it.
+    If introspection fails (e.g., in headless test mode without bpy), falls
+    back to a known-safe set that MUST contain every icon name this addon
+    actually references via `_icon(...)`. Keep this set in sync with the
+    `_icon(...)` call sites in this file - if you add a new icon to the UI,
+    add it here too.
+
+    Icon inventory used by this addon (audit with:
+    `rg "_icon\\('[A-Z_]+'\\)" omi_physics_body_gltf_extension.py | sort -u`):
+        CHECKMARK, ERROR, EXPORT, INFO, MESH_CUBE, MODIFIER,
+        PHYSICS, SCENE_DATA, X
+    """
     global _VALID_ICONS
     if _VALID_ICONS is None:
         try:
             props = bpy.types.UILayout.bl_rna.properties
             _VALID_ICONS = set(props["icon"].enum_items.keys())
         except Exception:
-            _VALID_ICONS = {"NONE", "INFO", "ERROR", "CHECKMARK", "MESH_CUBE",
-                            "OBJECT_DATA", "MODIFIER", "SCENE_DATA", "EXPORT",
-                            "PHYSICS"}
+            # Fallback: must contain every icon this addon uses (see docstring).
+            _VALID_ICONS = {
+                "NONE",            # always valid
+                "CHECKMARK",
+                "ERROR",
+                "EXPORT",
+                "INFO",
+                "MESH_CUBE",
+                "MODIFIER",
+                "PHYSICS",
+                "SCENE_DATA",
+                "X",
+            }
     return _VALID_ICONS
 
 
@@ -202,6 +226,71 @@ def _scale_status(obj):
     local = _copy_scale(obj.scale)
     world = _world_scale(obj)
     return _is_uniform(local), _is_uniform(world), local, world
+
+
+# ============================================================================
+# Auto-fit helper (shared by the operator and the is_collision update callback)
+# ============================================================================
+
+def _auto_fit_from_object(obj, props):
+    """Fill the collision shape's dimensions from the object's bounding box.
+
+    Returns True if the shape was fitted, False if the shape type doesn't
+    support auto-fit (convex/trimesh/none) or the object has no usable
+    dimensions.
+    """
+    dims = obj.dimensions
+    # Objects without geometry (Empty, Armature, etc.) have zero dimensions.
+    # Skip auto-fit for them so we don't write zeros into the shape.
+    if dims.x == 0.0 and dims.y == 0.0 and dims.z == 0.0:
+        return False
+
+    st = props.shape_type
+    if st == 'box':
+        props.box_size = (dims.x, dims.y, dims.z)
+    elif st == 'sphere':
+        props.sphere_radius = max(dims.x, dims.y, dims.z) * 0.5
+    elif st == 'cylinder':
+        max_axis = max(dims.x, dims.y, dims.z)
+        others = sorted([d for d in dims if abs(d - max_axis) > 1e-6])
+        props.cylinder_radius = (others[0] if others else max_axis) * 0.5
+        props.cylinder_height = max_axis
+        if max_axis == dims.x:
+            props.cylinder_axis = 'X'
+        elif max_axis == dims.y:
+            props.cylinder_axis = 'Y'
+        else:
+            props.cylinder_axis = 'Z'
+    elif st == 'capsule':
+        max_axis = max(dims.x, dims.y, dims.z)
+        others = sorted([d for d in dims if abs(d - max_axis) > 1e-6])
+        props.capsule_radius = (others[0] if others else max_axis) * 0.5
+        props.capsule_height = max_axis
+        if max_axis == dims.x:
+            props.capsule_axis = 'X'
+        elif max_axis == dims.y:
+            props.capsule_axis = 'Y'
+        else:
+            props.capsule_axis = 'Z'
+    else:
+        # convex / trimesh / none - no auto-fit
+        return False
+    return True
+
+
+def _on_is_collision_toggled(self, context):
+    """Update callback for OMIPhysicsProperties.is_collision.
+
+    When the user enables Is Collision, auto-fit the shape's dimensions
+    from the object's bounding box (for primitive shapes only). This saves
+    a click on the Auto-Fit button in the common workflow.
+    """
+    if not self.is_collision:
+        return
+    obj = context.object
+    if obj is None:
+        return
+    _auto_fit_from_object(obj, self)
 
 
 # ============================================================================
@@ -292,9 +381,11 @@ class OMIPhysicsProperties(PropertyGroup):
             "will be exported with the OMI_physics_body extension and (if a "
             "shape is configured) referenced from the root OMI_physics_shape "
             "shapes array. Godot will automatically import it as a "
-            "CollisionObject3D + CollisionShape3D."
+            "CollisionObject3D + CollisionShape3D. When enabled, the shape "
+            "dimensions are auto-fitted from the object's bounding box."
         ),
         default=False,
+        update=_on_is_collision_toggled,
     )
 
     # ---- Body motion type --------------------------------------------------
@@ -767,11 +858,20 @@ class OBJECT_PT_omi_shape(Panel):
         elif st == 'none':
             layout.label(text="Compound/group node (no own shape)", icon=_icon('INFO'))
 
-        # ---- Auto-fit button ----------------------------------------------
+        # ---- Auto-fit + Reset buttons ------------------------------------
+        # Vertically stacked (fused via aligned column). The Reset button uses
+        # the 'X' icon which has been in Blender since 2.5x and won't be
+        # removed - semantically reads as "clear the custom dimensions".
+        # Text label is also kept so the button is usable even if the icon
+        # somehow fails to render.
         if st in ('box', 'sphere', 'cylinder', 'capsule'):
-            layout.operator("object.omi_physics_auto_fit",
-                            icon=_icon('MESH_CUBE'),
-                            text="Auto-Fit from Object")
+            col = layout.column(align=True)
+            col.operator("object.omi_physics_auto_fit",
+                         icon=_icon('MESH_CUBE'),
+                         text="Auto-Fit from Object")
+            col.operator("object.omi_physics_reset_defaults",
+                         icon=_icon('X'),
+                         text="Reset to Defaults")
 
 
 # ============================================================================
@@ -791,39 +891,55 @@ class OBJECT_OT_omi_physics_auto_fit(Operator):
     def execute(self, context):
         obj = context.object
         props = obj.omi_physics_props
-        dims = obj.dimensions
+        if _auto_fit_from_object(obj, props):
+            self.report({'INFO'}, "Auto-fit collision from object dimensions")
+            return {'FINISHED'}
+        self.report({'WARNING'}, "Auto-fit not available for this shape type "
+                                 "(or object has no dimensions)")
+        return {'CANCELLED'}
 
-        if props.shape_type == 'box':
-            props.box_size = (dims.x, dims.y, dims.z)
-        elif props.shape_type == 'sphere':
-            props.sphere_radius = max(dims.x, dims.y, dims.z) * 0.5
-        elif props.shape_type == 'cylinder':
-            max_axis = max(dims.x, dims.y, dims.z)
-            others = sorted([d for d in dims if abs(d - max_axis) > 1e-6])
-            props.cylinder_radius = (others[0] if others else max_axis) * 0.5
-            props.cylinder_height = max_axis
-            if max_axis == dims.x:
-                props.cylinder_axis = 'X'
-            elif max_axis == dims.y:
-                props.cylinder_axis = 'Y'
-            else:
-                props.cylinder_axis = 'Z'
-        elif props.shape_type == 'capsule':
-            max_axis = max(dims.x, dims.y, dims.z)
-            others = sorted([d for d in dims if abs(d - max_axis) > 1e-6])
-            props.capsule_radius = (others[0] if others else max_axis) * 0.5
-            props.capsule_height = max_axis
-            if max_axis == dims.x:
-                props.capsule_axis = 'X'
-            elif max_axis == dims.y:
-                props.capsule_axis = 'Y'
-            else:
-                props.capsule_axis = 'Z'
+
+# ============================================================================
+# Operator: reset shape dimensions to defaults
+# ============================================================================
+
+class OBJECT_OT_omi_physics_reset_defaults(Operator):
+    bl_idname = "object.omi_physics_reset_defaults"
+    bl_label = "Reset Shape to Defaults"
+    bl_description = (
+        "Reset the collision shape's dimensions to sane defaults "
+        "(box=1,1,1; sphere=0.5; cylinder=0.5/1.0; capsule=0.5/1.0). "
+        "Useful after editing the object's mesh if you don't want to "
+        "re-run Auto-Fit."
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        if obj is None or not obj.omi_physics_props.is_collision:
+            return False
+        return obj.omi_physics_props.shape_type in ('box', 'sphere', 'cylinder', 'capsule')
+
+    def execute(self, context):
+        props = context.object.omi_physics_props
+        st = props.shape_type
+        if st == 'box':
+            props.box_size = (1.0, 1.0, 1.0)
+        elif st == 'sphere':
+            props.sphere_radius = 0.5
+        elif st == 'cylinder':
+            props.cylinder_radius = 0.5
+            props.cylinder_height = 1.0
+            props.cylinder_axis = 'Y'
+        elif st == 'capsule':
+            props.capsule_radius = 0.5
+            props.capsule_height = 1.0
+            props.capsule_axis = 'Y'
         else:
-            self.report({'WARNING'}, "Auto-fit not available for this shape type")
+            self.report({'WARNING'}, "Reset not available for this shape type")
             return {'CANCELLED'}
-
-        self.report({'INFO'}, "Auto-fit collision from object dimensions")
+        self.report({'INFO'}, "Shape reset to defaults")
         return {'FINISHED'}
 
 
@@ -1325,6 +1441,7 @@ _classes = (
     OBJECT_PT_omi_shape,
     # Operators
     OBJECT_OT_omi_physics_auto_fit,
+    OBJECT_OT_omi_physics_reset_defaults,
     OBJECT_OT_omi_physics_bake_scale,
     OBJECT_OT_omi_physics_validate_scene,
 )
