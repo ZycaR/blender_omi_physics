@@ -3,7 +3,7 @@
 bl_info = {
     "name": "OMI Physics Body glTF Extension",
     "author": "Z",
-    "version": (1, 6, 3),
+    "version": (1, 6, 4),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar (N) > OMI Physics tab",
     "description": (
