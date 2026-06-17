@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] - 2026-06-17
+
+### Added
+- **Viewport gizmo matching collision shape type.** When `Is Collision` is
+  enabled, the object's `Viewport Display > Display As` is switched to
+  `Bounds` and `Viewport Display > Bounds` is set to a shape that matches
+  the collision shape type:
+  - Box → `Box`
+  - Sphere → `Sphere`
+  - Cylinder → `Cylinder` (orientation follows the object's rotation)
+  - Capsule → `Capsule` (orientation follows the object's rotation)
+  - None → `Box` (just the AABB as a hint)
+  - Convex / Trimesh → `Wire` (the mesh IS the collision shape)
+
+  This gives the user an at-a-glance visual indicator of what collision
+  shape will be exported, including cylinder/capsule orientation — without
+  any custom GPU drawing code (Blender's built-in bounds gizmos are used
+  natively).
+
+- **Auto-fit on shape type change.** When the user picks a new primitive
+  shape type from the dropdown, the new shape's dimensions are
+  automatically fitted from the object's bounding box (same as the
+  existing auto-fit on `Is Collision` enable). No button click needed.
+
+- **Reset Shape to Defaults** operator (next to Auto-Fit in the Shape
+  panel, with an `X` icon). Resets dimensions to sane defaults:
+  - Box: size = (1, 1, 1)
+  - Sphere: radius = 0.5
+  - Cylinder: radius = 0.5, height = 1.0, axis = 'Y'
+  - Capsule: radius = 0.5, height = 1.0, axis = 'Y'
+
+- **Visual grouping box** in the Shape panel: the per-shape dimension
+  inputs + Auto-Fit + Reset buttons are wrapped in a `layout.box()` for
+  primitive shapes, so they read as one visual group.
+
+- Synced the `_valid_icons()` fallback set with the actual icon inventory
+  used by the addon (added `X`, removed orphaned `OBJECT_DATA`). Added a
+  docstring with the audit command so future contributors can re-sync
+  after adding new icons.
+
+### Changed
+- **Auto-fit now also fires when shape type changes**, not just when
+  `Is Collision` is toggled on. Switching from Box to Cylinder, for
+  example, immediately refits the cylinder radius/height from the
+  object's bounding box.
+- The Auto-Fit operator now gracefully skips objects with zero dimensions
+  (Empty, Armature, etc.) instead of writing zeros into the shape.
+- Shape panel: Auto-Fit and Reset buttons are now in a vertical aligned
+  column (fused, no gap between them).
+- Per-axis inputs in the Body sub-panels (Velocity, Center of Mass,
+  Inertia) now use the fused-box pattern: each axis is on its own line
+  with the axis letter inside the input box, and all axes of a group
+  share borders (no inter-row gaps) via `column(align=True)`.
+- Box Size in the Shape panel uses the same fused-box pattern.
+
+### Internal
+- Added `_apply_viewport_display()` and `_restore_viewport_display()`
+  helpers plus a `_SHAPE_TO_BOUNDS_TYPE` lookup table to map collision
+  shape types to Blender `display_bounds_type` values.
+- Added `saved_display_bounds_type` StringProperty alongside
+  `saved_display_type` to remember the object's original viewport display
+  settings so they can be restored on `Is Collision` disable.
+- Refactored the auto-fit logic into a shared `_auto_fit_from_object()`
+  helper so it can be called from both the operator and the property
+  update callbacks without duplication.
+
 ## [1.6.3] - 2026-06-17
 
 ### Added
@@ -148,6 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Best-effort round-trip import: re-applies `OMI_physics_body` data onto
   the Blender objects created for each glTF node.
 
+[1.6.4]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.4
 [1.6.3]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.3
 [1.6.2]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.2
 [1.6.0]: https://github.com/ZycaR/omi-physics-body-gltf-extension/releases/tag/v1.6.0

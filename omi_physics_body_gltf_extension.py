@@ -281,26 +281,118 @@ def _auto_fit_from_object(obj, props):
 def _on_is_collision_toggled(self, context):
     """Update callback for OMIPhysicsProperties.is_collision.
 
-    When the user enables Is Collision, auto-fit the shape's dimensions
-    from the object's bounding box (for primitive shapes only). This saves
-    a click on the Auto-Fit button in the common workflow.
+    When the user enables Is Collision:
+      - Auto-fit the shape's dimensions from the object's bounding box
+        (for primitive shapes only).
+      - Switch the object's viewport display to BOUNDS with a
+        display_bounds_type that matches the collision shape type:
+          box      -> BOX
+          sphere   -> SPHERE
+          cylinder -> CYLINDER
+          capsule  -> CAPSULE
+          none     -> BOX (just show the AABB as a hint)
+          convex / trimesh -> WIRE (the mesh IS the collision shape)
+      - Save the previous display_type AND display_bounds_type so we can
+        restore both on disable.
+
+    When the user disables Is Collision:
+      - Restore the object's previous display_type and display_bounds_type,
+        but ONLY if they're still what we set them to (i.e., the user
+        didn't manually change them after enabling). If they manually
+        switched to other values, respect their choice and don't clobber.
     """
-    if not self.is_collision:
-        return
     obj = context.object
     if obj is None:
         return
-    _auto_fit_from_object(obj, self)
+
+    if self.is_collision:
+        # Enable: auto-fit + apply viewport display
+        _auto_fit_from_object(obj, self)
+        _apply_viewport_display(obj, self, save_original=True)
+    else:
+        # Disable: restore previous display settings (only if user hasn't
+        # manually changed them since we applied ours).
+        _restore_viewport_display(obj, self)
+
+
+# Mapping from collision shape_type to Blender display_bounds_type.
+# Only primitive shapes are mapped; convex/trimesh/none are handled
+# separately (see _apply_viewport_display).
+_SHAPE_TO_BOUNDS_TYPE = {
+    'box':      'BOX',
+    'sphere':   'SPHERE',
+    'cylinder': 'CYLINDER',
+    'capsule':  'CAPSULE',
+    'none':     'BOX',         # No shape -> just show the AABB
+}
+
+
+def _apply_viewport_display(obj, props, save_original=True):
+    """Set obj.display_type and obj.display_bounds_type based on the
+    collision shape_type. If save_original is True, record the previous
+    values on `props` so they can be restored later.
+    """
+    if not hasattr(obj, "display_type"):
+        return  # Armature/Camera/etc. - no display_type attr.
+
+    # Save originals (only if not already saved - this guards against
+    # on->off->on without a clear in between).
+    if save_original:
+        if not props.saved_display_type:
+            props.saved_display_type = obj.display_type
+        if not props.saved_display_bounds_type and hasattr(obj, "display_bounds_type"):
+            props.saved_display_bounds_type = obj.display_bounds_type
+
+    st = props.shape_type
+    if st in ('convex', 'trimesh'):
+        # The mesh IS the collision shape -> show it as wireframe.
+        obj.display_type = 'WIRE'
+    else:
+        # Primitive shapes (box/sphere/cylinder/capsule) and 'none':
+        # display as bounds with a matching shape.
+        obj.display_type = 'BOUNDS'
+        if hasattr(obj, "display_bounds_type"):
+            obj.display_bounds_type = _SHAPE_TO_BOUNDS_TYPE.get(st, 'BOX')
+
+
+def _restore_viewport_display(obj, props):
+    """Inverse of _apply_viewport_display: restore the saved display_type
+    and display_bounds_type, but only if the user hasn't manually changed
+    them since we applied ours. Then clear the saved values.
+    """
+    if not hasattr(obj, "display_type"):
+        return
+
+    # Restore display_type if it's still what we set it to.
+    if props.saved_display_type:
+        # We set it to either 'BOUNDS' (primitive/none) or 'WIRE' (convex/trimesh).
+        # If the user manually changed it to something else, respect their choice.
+        current = obj.display_type
+        if current in ('BOUNDS', 'WIRE'):
+            obj.display_type = props.saved_display_type
+        props.saved_display_type = ""
+
+    # Restore display_bounds_type similarly.
+    if props.saved_display_bounds_type and hasattr(obj, "display_bounds_type"):
+        current_bounds = obj.display_bounds_type
+        # We set it to one of BOX/SPHERE/CYLINDER/CAPSULE.
+        if current_bounds in _SHAPE_TO_BOUNDS_TYPE.values():
+            obj.display_bounds_type = props.saved_display_bounds_type
+        props.saved_display_bounds_type = ""
 
 
 def _on_shape_type_changed(self, context):
     """Update callback for OMIPhysicsProperties.shape_type.
 
-    When the user picks a new primitive shape type, auto-fit its dimensions
-    from the object's bounding box so the new shape immediately matches the
-    object's size. Skipped for convex/trimesh/none (no dimensions to fit).
-    Also skipped if Is Collision is off (no point fitting a shape on a
-    non-collision object).
+    When the user picks a new primitive shape type:
+      - Auto-fit its dimensions from the object's bounding box so the new
+        shape immediately matches the object's size. Skipped for
+        convex/trimesh/none (no dimensions to fit).
+      - Re-apply the viewport display so the gizmo matches the new shape
+        type (e.g., switching from Box to Cylinder updates the viewport
+        bounds shape from BOX to CYLINDER). save_original=False because
+        we already saved on Is Collision enable.
+    Skipped entirely if Is Collision is off.
     """
     if not self.is_collision:
         return
@@ -308,6 +400,7 @@ def _on_shape_type_changed(self, context):
     if obj is None:
         return
     _auto_fit_from_object(obj, self)
+    _apply_viewport_display(obj, self, save_original=False)
 
 
 # ============================================================================
@@ -556,6 +649,26 @@ class OMIPhysicsProperties(PropertyGroup):
         default=(0.0, 0.0, 0.0, 1.0),
         size=4,
         subtype='QUATERNION',
+    )
+
+    # ---- Internal (hidden) state ------------------------------------------
+    # Records the object's display_type and display_bounds_type before we
+    # forced them on Is Collision enable, so we can restore both on disable.
+    # Empty string means "no saved value" (i.e., Is Collision is currently
+    # off or we never forced the display).
+    #
+    # NOTE: Blender disallows PropertyGroup attribute names starting with
+    # '_', so these are named without the underscore prefix. They're still
+    # effectively hidden because no panel ever draws them.
+    saved_display_type: StringProperty(
+        name="Saved Display Type",
+        description="Internal: stores the object's display_type before Is Collision forced it.",
+        default="",
+    )
+    saved_display_bounds_type: StringProperty(
+        name="Saved Display Bounds Type",
+        description="Internal: stores the object's display_bounds_type before Is Collision forced it.",
+        default="",
     )
 
 
