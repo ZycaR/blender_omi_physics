@@ -9,6 +9,14 @@ Drop your collision setup in Blender → export glTF/GLB → Godot automatically
 
 ---
 
+## Video Tutorial
+
+🎥 Watch the tutorial on YouTube:
+https://www.youtube.com/watch?v=-oBwMHa15IQ
+
+---
+
+
 ## Table of Contents
 
 - [Features](#features)
