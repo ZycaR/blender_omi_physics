@@ -269,7 +269,7 @@ The AI is genuinely proud of this little addon. It's not every day you ship a pi
 
 ### Inspirations
 
-- [`cyberneticocult/gltf-blender-io-omi-collision-extension`](https://github.com/cyberneticocult/gltf-blender-io-omi-collision-extension) — the original OMI_collider addon whose canonical glTF extension integration pattern we adopted (and whose author deserves credit for showing the way).
+- [`cyberneticocult/gltf-blender-io-omi-collision-extension`](https://github.com/cyberneticocult/gltf-blender-io-omi-collision-extension) — the original OMI_collider addon whose canonical glTF extension integration pattern we adopted (and whose author deserves credit for showing the way). Project is MIT-licensed.
 
 ### Tools used
 
@@ -281,6 +281,31 @@ The AI is genuinely proud of this little addon. It's not every day you ship a pi
 
 ## License
 
-[MIT](./LICENSE) — © 2026 ZycaR and contributors.
+This addon is **dual-licensed** to satisfy both the open-source community and the Blender Extensions Store policy.
 
-Feel free to fork, modify, embed in larger projects, or use as a reference for your own glTF extension addons. Attribution is appreciated but not required.
+### GitHub (this repository): MIT
+
+The source code in this repository is licensed under the **MIT License** — see [LICENSE](./LICENSE).
+
+MIT is permissive: you can fork, modify, embed in larger projects (including proprietary ones), or use this as a reference for your own glTF extension addons. Attribution is appreciated but not required.
+
+### Blender Extensions Store: GPL-3.0-or-later
+
+When distributed through the official **Blender Extensions Store** (`extensions.blender.org`), this addon is licensed under the **GNU General Public License v3 or later** (`SPDX:GPL-3.0-or-later`).
+
+This is required to comply with the Blender Extensions Store's policy that all extensions be GPL-licensed for consistency with the Blender ecosystem (Blender itself is GPL-2.0-or-later). The `blender_manifest.toml` file in this repo declares this store-side license:
+
+```toml
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+```
+
+### Why dual licensing?
+
+The copyright holder (ZycaR) can license the same code under multiple licenses simultaneously. This dual-license approach lets us:
+
+- **On GitHub (MIT):** maximize adoption — anyone can use the code in any context, including proprietary game engines, commercial pipelines, or other Blender addons.
+- **On the Blender Extensions Store (GPL-3.0-or-later):** comply with the store's GPL requirement and keep the addon freely distributable within the Blender ecosystem.
+
+Both licenses are **GPL-compatible**, so there is no legal conflict. Users who obtain the code via the Blender Extensions Store get it under GPL-3.0-or-later; users who obtain it via GitHub get it under MIT. Each recipient is bound by the terms of the license under which they received the code.
