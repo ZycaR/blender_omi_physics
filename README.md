@@ -46,6 +46,7 @@ https://www.youtube.com/watch?v=-oBwMHa15IQ
 - **Best-effort round-trip import** — re-applies `OMI_physics_body` data onto Blender objects when re-importing a glTF.
 - **Shape deduplication** — identical shapes share a single entry in the root `shapes` array, keeping file sizes small.
 - **Bulletproof icon handling** — runtime icon validator falls back to `NONE` for any icon name Blender 5.x has removed, so the UI never crashes.
+- **Readable source, single-file build** — developed in small `src/` modules (core / UI / glTF), bundled into one distributable `.py` by a zero-dependency Node script. The build is proven behavior-identical to the pre-split file via an AST equivalence check.
 
 ---
 
@@ -100,7 +101,7 @@ Matches Godot master as of 2026-06. See [`modules/gltf/extensions/physics/`](htt
 
 ## Installation
 
-1. Download [`omi_physics_body_gltf_extension.py`](./omi_physics_body_gltf_extension.py) to your computer.
+1. Download [`dist/omi_physics_body_gltf_extension.py`](./dist/omi_physics_body_gltf_extension.py) to your computer.
 2. In Blender: **Edit → Preferences → Add-ons** (top-right of the window).
 3. Click **Install...** in the top-right of the Add-ons panel.
 4. Browse to the downloaded `.py` file and click **Install Add-on**.
@@ -217,9 +218,50 @@ This addon handles the conversion at export time (inside `_build_shape`), readin
 
 ---
 
+## Development: Source Layout & Build
+
+The addon is **developed as five small modules under `src/`** and bundled into the single distributable `dist/omi_physics_body_gltf_extension.py` that users install. The bundled file is committed so the "download one .py" install flow keeps working.
+
+Rebuild it with (Node 18+, zero npm dependencies — no `npm install` needed):
+
+```bash
+node scripts/build.mjs            # bundle + Blender extension .zip into dist/
+node scripts/build.mjs --verify   # also run the offline smoke test (python3)
+```
+
+### Module layout
+
+| Module | Contents |
+|---|---|
+| `src/omi_meta.py` | `bl_info` + the schema/reference docstring (bundle header). |
+| `src/omi_core.py` | **Business logic & data model**: icon-safety helper, non-uniform-scale helpers, auto-fit, viewport display save/restore, +Y Up conversion, `OMIPhysicsProperties`. No UI, no glTF coupling. |
+| `src/omi_ui.py` | **UI layer**: the six panels and four operators. |
+| `src/omi_gltf_ext.py` | **glTF integration**: `_HAS_GLTF` probe + `glTF2ExportUserExtension` / `glTF2ImportUserExtension`. |
+| `src/omi_register.py` | **Composition root**: `_classes`, `register()` / `unregister()`. |
+
+Dependency direction: `register → ui + core + gltf_ext`, `ui → core + gltf_ext`, `gltf_ext → core`, and `core` depends on nothing internal — no cycles. Each module imports its siblings explicitly (e.g. `from omi_core import _icon`) so editors and offline tests work per-module; the bundler strips those intra-project imports and merges the external ones (`bpy`, `math`, …) into a single header block.
+
+### Build guarantees
+
+- Concatenation order is fixed: `omi_meta → omi_core → omi_ui → omi_gltf_ext → omi_register`.
+- `bl_info` in the bundle is **synced from `blender_manifest.toml`** (version, author, doc_url), so the manifest stays the single source of truth — the build prints a warning when `src/omi_meta.py` is stale.
+- `dist/omi_physics_body_gltf_extension-<version>.zip` is a ready-to-upload Blender **extension** package (`blender_manifest.toml` + `__init__.py`, with `bl_info` stripped).
+- `python3 scripts/check_equivalence.py <old.py> <new.py>` AST-compares two single-file versions (order-insensitive, docstrings and `bl_info` values normalized) — this is how the split was proven to be a pure refactor.
+
+### Testing
+
+```bash
+node scripts/build.mjs --verify                                  # build + smoke test
+python3 scripts/verify_bundle.py                                 # smoke test only
+python3 scripts/check_equivalence.py old.py dist/omi_...py       # AST equivalence
+python3 scripts/test_omi_physics_export.py                       # full scenario suite (keep it pointed at dist/)
+```
+
+---
+
 ## Contributing
 
-Contributions are welcome! This is a small, single-file addon, so the workflow is lightweight.
+Contributions are welcome! The workflow is lightweight.
 
 ### Reporting bugs
 
@@ -237,11 +279,12 @@ Open an issue with the `enhancement` label. Please describe the use case before 
 ### Pull requests
 
 1. Fork the repo and create a feature branch (`git checkout -b feature/my-feature`).
-2. Keep changes minimal and focused. The addon is intentionally a single file — please don't split it unless there's a compelling reason.
+2. Keep changes minimal and focused. Develop in `src/` — never edit `dist/omi_physics_body_gltf_extension.py` by hand. Run `node scripts/build.mjs` and commit the regenerated bundle together with your `src/` changes.
 3. If you change behavior, update the [CHANGELOG.md](./CHANGELOG.md) under an `[Unreleased]` section.
 4. If you add new UI icons, run them through the `_icon()` helper so they don't crash future Blender versions.
 5. Test that the existing test scenarios still pass:
    ```bash
+   node scripts/build.mjs --verify
    python3 scripts/test_omi_physics_export.py
    ```
 6. Open a PR with a clear description of what changed and why.

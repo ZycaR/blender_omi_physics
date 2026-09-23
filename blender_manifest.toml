@@ -68,7 +68,9 @@ files = "Import/export glTF, GLB and Blender files from/to disk"
 paths_exclude_pattern = [
   "__pycache__/",
   "/.git/",
+  "/.gitignore",
   "/*.zip",
+  "/src/",
   "/scripts/",
-  "/VIDEO_SCRIPT.md",
+  "/dist/",
 ]

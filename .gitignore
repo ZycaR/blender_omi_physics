@@ -52,3 +52,4 @@ scripts/__pycache__/
 # Local-only notes / scratch files
 notes/
 TODO.local.md
+/dist
