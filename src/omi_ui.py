@@ -15,6 +15,7 @@ from bpy.types import Panel, Operator
 
 from omi_core import _auto_fit_from_object, _icon, _is_uniform, _scale_status
 from omi_gltf_ext import _HAS_GLTF
+from omi_modifier import draw_omi_shape_ui
 
 
 # ============================================================================
@@ -294,69 +295,9 @@ class OBJECT_PT_omi_shape(Panel):
         return obj is not None and obj.omi_physics_props.is_collision
 
     def draw(self, context):
-        layout = self.layout
-        obj = context.object
-        props = obj.omi_physics_props
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        layout.prop(props, "shape_type")
-
-        st = props.shape_type
-
-        # ---- Visual grouping box for primitive shapes --------------------
-        # Wrap the per-shape dimension inputs + Auto-Fit + Reset buttons in
-        # a layout.box() so they read as one visual group. Convex / trimesh /
-        # none just show an informational label and stay outside the box.
-        if st in ('box', 'sphere', 'cylinder', 'capsule'):
-            group = layout.box()
-
-            if st == 'box':
-                # Box Size: fused-box pattern (label + aligned column + 3 rows).
-                # Disable use_property_split for this sub-section so the text="X"
-                # labels render inside the input boxes instead of in front.
-                sub = group.column()
-                sub.use_property_split = False
-                sub.label(text="Box Size:")
-                col = sub.column(align=True)
-                row = col.row(align=True)
-                row.prop(props, "box_size", index=0, text="X")
-                row = col.row(align=True)
-                row.prop(props, "box_size", index=1, text="Y")
-                row = col.row(align=True)
-                row.prop(props, "box_size", index=2, text="Z")
-            elif st == 'sphere':
-                group.prop(props, "sphere_radius")
-            elif st == 'cylinder':
-                group.prop(props, "cylinder_radius")
-                group.prop(props, "cylinder_height")
-                group.prop(props, "cylinder_axis")
-            elif st == 'capsule':
-                group.prop(props, "capsule_radius")
-                group.prop(props, "capsule_height")
-                group.prop(props, "capsule_axis")
-
-            # ---- Auto-fit + Reset buttons (vertically stacked, fused) ----
-            # Reset uses 'X' icon (safe since Blender 2.5x) - reads as
-            # "clear the custom dimensions". Text label kept for accessibility.
-            col = group.column(align=True)
-            col.operator("object.omi_physics_auto_fit",
-                         icon=_icon('MESH_CUBE'),
-                         text="Auto-Fit from Object")
-            col.operator("object.omi_physics_reset_defaults",
-                         icon=_icon('X'),
-                         text="Reset to Defaults")
-
-        elif st == 'convex':
-            layout.label(text="Uses this object's mesh as convex hull", icon=_icon('INFO'))
-            if obj.type != 'MESH':
-                layout.label(text="WARNING: object has no mesh!", icon=_icon('ERROR'))
-        elif st == 'trimesh':
-            layout.label(text="Uses this object's mesh as triangle mesh", icon=_icon('INFO'))
-            if obj.type != 'MESH':
-                layout.label(text="WARNING: object has no mesh!", icon=_icon('ERROR'))
-        elif st == 'none':
-            layout.label(text="Compound/group node (no own shape)", icon=_icon('INFO'))
+        # Shared with the modifier-stack OMI Collider panel
+        # (OBJECT_PT_omi_collider_modifier in omi_modifier.py).
+        draw_omi_shape_ui(self.layout, context.object)
 
 
 # ============================================================================

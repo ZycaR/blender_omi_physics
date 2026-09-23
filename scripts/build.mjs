@@ -46,6 +46,7 @@ const DIST = join(ROOT, 'dist');
 const ORDER = [
   'omi_meta.py',
   'omi_core.py',
+  'omi_modifier.py',
   'omi_ui.py',
   'omi_gltf_ext.py',
   'omi_register.py',

@@ -51,7 +51,7 @@ for n in ('BoolProperty', 'EnumProperty', 'FloatProperty',
           'FloatVectorProperty', 'PointerProperty', 'StringProperty'):
     setattr(bpy_props, n, _prop_stub)
 bpy_types = types.ModuleType('bpy.types')
-for n in ('PropertyGroup', 'Panel', 'Operator', 'Object', 'UILayout'):
+for n in ('PropertyGroup', 'Panel', 'Operator', 'Menu', 'Object', 'UILayout'):
     setattr(bpy_types, n, type(n, (), {}))
 bpy_utils = types.ModuleType('bpy.utils')
 bpy_utils.register_class = lambda cls: None
@@ -128,10 +128,14 @@ for name in ('bl_info', 'OMIPhysicsProperties', 'register', 'unregister',
              'OBJECT_PT_omi_analyze', 'OBJECT_PT_omi_body',
              'OBJECT_PT_omi_body_velocity', 'OBJECT_PT_omi_body_com',
              'OBJECT_PT_omi_body_inertia', 'OBJECT_PT_omi_shape',
+             'OBJECT_PT_omi_collider_modifier',
              'OBJECT_OT_omi_physics_auto_fit',
              'OBJECT_OT_omi_physics_reset_defaults',
              'OBJECT_OT_omi_physics_bake_scale',
              'OBJECT_OT_omi_physics_validate_scene',
+             'OBJECT_OT_omi_collider_add_modifier',
+             'OBJECT_MT_omi_physics_modifier_add',
+             'draw_omi_shape_ui',
              'glTF2ExportUserExtension', 'glTF2ImportUserExtension',
              '_HAS_GLTF'):
     check(f'module defines {name}', hasattr(mod, name))
@@ -228,6 +232,77 @@ check('import set is_collision True', p.is_collision is True)
 check("import set body_type 'dynamic'", p.body_type == 'dynamic')
 check('import set mass 2.0', p.mass == 2.0)
 check('import set box size', tuple(p.box_size) == (1.0, 3.0, 2.0))
+
+print('omi collider modifier:')
+
+
+class _FakeLayout:
+    def __init__(self):
+        self.calls = []
+
+    def __getattr__(self, name):
+        def _rec(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            return _FakeLayout()
+        return _rec
+
+    def __call__(self, *args, **kwargs):
+        return _FakeLayout()
+
+
+def _fake_collider_obj(**over):
+    d = dict(name='TestObj', type='MESH',
+             scale=NS(x=1.0, y=1.0, z=1.0), matrix_world=None,
+             dimensions=NS(x=2.0, y=4.0, z=4.0),
+             display_type='TEXTURED', display_bounds_type='BOX',
+             modifiers=[], omi_physics_props=fake_props())
+    d.update(over)
+    return NS(**d)
+
+
+check('_is_omi_collider_modifier matches NODES+group',
+      mod._is_omi_collider_modifier(
+          NS(type='NODES', name='OMI Collider',
+             node_group=NS(name='OMI Collider'))))
+check('_is_omi_collider_modifier rejects other modifiers',
+      not mod._is_omi_collider_modifier(NS(type='BEVEL', name='Bevel')))
+obj_with = _fake_collider_obj(
+    modifiers=[NS(type='NODES', name='OMI Collider',
+                  node_group=NS(name='OMI Collider'))])
+check('modifier panel poll True when anchor present',
+      mod.OBJECT_PT_omi_collider_modifier.poll(NS(object=obj_with)))
+check('modifier panel poll False without anchor',
+      not mod.OBJECT_PT_omi_collider_modifier.poll(
+          NS(object=_fake_collider_obj())))
+check('omi physics submenu label == OMI Physics',
+      mod.OBJECT_MT_omi_physics_modifier_add.bl_label == 'OMI Physics')
+try:
+    submenu = mod.OBJECT_MT_omi_physics_modifier_add
+    fake_self = NS(layout=_FakeLayout())
+    submenu.draw(fake_self, NS(object=_fake_collider_obj()))
+    check('omi physics submenu draw runs', True)
+except Exception as exc:  # noqa: BLE001
+    check(f'omi physics submenu draw raised: {exc!r}', False)
+try:
+    mod.draw_omi_shape_ui(_FakeLayout(), _fake_collider_obj())
+    check('draw_omi_shape_ui runs (box)', True)
+except Exception as exc:  # noqa: BLE001
+    check(f'draw_omi_shape_ui raised: {exc!r}', False)
+try:
+    mod.draw_omi_shape_ui(
+        _FakeLayout(),
+        _fake_collider_obj(omi_physics_props=fake_props(shape_type='cylinder')))
+    check('draw_omi_shape_ui runs (cylinder)', True)
+except Exception as exc:  # noqa: BLE001
+    check(f'draw_omi_shape_ui raised: {exc!r}', False)
+try:
+    mod.draw_omi_shape_ui(
+        _FakeLayout(),
+        _fake_collider_obj(omi_physics_props=fake_props(
+            shape_type='convex', is_collision=True)))
+    check('draw_omi_shape_ui runs (convex)', True)
+except Exception as exc:  # noqa: BLE001
+    check(f'draw_omi_shape_ui raised: {exc!r}', False)
 
 print('register / unregister:')
 try:

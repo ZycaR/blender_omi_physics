@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # OMI Physics Body glTF Extension
 # Exports OMI_physics_body + OMI_physics_shape glTF extensions for Godot 4.x.
 id = "omi_physics_body_gltf_extension"
-version = "1.6.5"
+version = "1.7.0"
 name = "OMI Physics Body glTF Extension"
 tagline = "Export primitive collision shapes from Blender to Godot via glTF"
 maintainer = "ZycaR"

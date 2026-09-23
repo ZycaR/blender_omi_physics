@@ -2,8 +2,8 @@
 # bl_info serves as the addon manifest that Blender reads on install.
 bl_info = {
     "name": "OMI Physics Body glTF Extension",
-    "author": "Z",
-    "version": (1, 6, 4),
+    "author": "ZycaR",
+    "version": (1, 7, 0),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar (N) > OMI Physics tab",
     "description": (
@@ -15,7 +15,7 @@ bl_info = {
         "Viewport sidebar UI with collapsible Analyze/Body/Shape panels."
     ),
     "warning": "Requires Blender 5.0+ and the built-in glTF 2.0 format addon enabled.",
-    "doc_url": "",
+    "doc_url": "https://github.com/ZycaR/blender_omi_physics",
     "category": "Import-Export",
 }
 
@@ -104,6 +104,8 @@ edit it directly. The source lives in src/ modules which scripts/build.mjs
 
     src/omi_meta.py        bl_info + this docstring (bundle header)
     src/omi_core.py        business logic + data model (PropertyGroup)
+    src/omi_modifier.py    OMI Collider modifier-stack entry (Add Modifier >
+                           Physics) + shared Shape UI helper
     src/omi_ui.py          viewport panels + operators
     src/omi_gltf_ext.py    glTF export/import user extensions
     src/omi_register.py    _classes + register()/unregister()
