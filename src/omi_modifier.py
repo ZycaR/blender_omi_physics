@@ -38,18 +38,10 @@ OMI_PHYSICS_MENU_LABEL = "OMI Physics"
 # Names shown in the modifier stack / node editor. The node-group tree
 # uses the "[OMI Physics] Collider" tag-style prefix so related trees
 # group together alphabetically and future modifiers (e.g. "[OMI
-# Physics] Physics Body") sort next to it. NOTE: ">" must NOT be used
-# in datablock names - it is a reserved library path separator, and a
-# tree named "OMI Physics > OMI Collider" is hidden from the Geometry
-# Nodes "Browse Node Tree" picker (visible only via New).
+# Physics] Physics Body") sort next to it.
 OMI_COLLIDER_MOD_NAME = "OMI Collider"
 OMI_COLLIDER_GROUP_NAME = "[OMI Physics] Collider"
 # Tree names from older builds that must still be recognised.
-OMI_COLLIDER_LEGACY_GROUPS = frozenset({
-    OMI_COLLIDER_MOD_NAME,          # 1.7.0 initial build
-    "OMI Physics > OMI Collider",   # 1.7.0 submenu build
-})
-
 
 def _is_omi_collider_modifier(md):
     """True if `md` is one of our anchor NODES modifiers."""
@@ -58,10 +50,7 @@ def _is_omi_collider_modifier(md):
             return False
         ng = getattr(md, "node_group", None)
         ng_name = getattr(ng, "name", "") or ""
-        # Current tree name + legacy tree names from older builds.
         if ng_name == OMI_COLLIDER_GROUP_NAME:
-            return True
-        if ng_name in OMI_COLLIDER_LEGACY_GROUPS:
             return True
         return (getattr(md, "name", "") or "").startswith(OMI_COLLIDER_MOD_NAME)
     except Exception:
@@ -98,18 +87,9 @@ def _get_or_create_collider_node_group():
             return existing
     except Exception:
         pass
-    # Heal: rename the ">"-named tree from the previous build (it is
-    # hidden from the Browse Node Tree picker) instead of leaving a
-    # duplicate behind.
-    try:
-        stale = groups.get("OMI Physics > OMI Collider")
-        if stale is not None:
-            stale.name = OMI_COLLIDER_GROUP_NAME
-            return stale
-    except Exception:
-        pass
     try:
         ng = groups.new(OMI_COLLIDER_GROUP_NAME, 'GeometryNodeTree')
+        ng.is_modifier = True
     except Exception:
         return None
     try:
@@ -118,7 +98,6 @@ def _get_or_create_collider_node_group():
         in_node.location = (-200, 0)
         out_node.location = (200, 0)
         try:
-            # Blender 4.0+ interface API.
             iface = ng.interface
             have_in = False
             have_out = False
@@ -135,14 +114,7 @@ def _get_or_create_collider_node_group():
                 iface.new_socket("Geometry", socket_type='NodeSocketGeometry',
                                  in_out='OUTPUT')
         except Exception:
-            # Pre-4.0 API.
-            try:
-                if not getattr(ng, "inputs", []):
-                    ng.inputs.new('NodeSocketGeometry', "Geometry")
-                if not getattr(ng, "outputs", []):
-                    ng.outputs.new('NodeSocketGeometry', "Geometry")
-            except Exception:
-                pass
+            pass
         try:
             ng.links.new(in_node.outputs[0], out_node.inputs[0])
         except Exception:
